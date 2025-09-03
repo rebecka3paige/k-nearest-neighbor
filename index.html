@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K-Nearest Neighbor Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8f8f8; margin: 0; padding: 0; }
+    .container { max-width: 700px; margin: 40px auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px #0001; padding: 24px; }
+    h1 { text-align: center; }
+    #controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    #canvas { display: block; margin: 0 auto; background: #f0f0f0; border: 1px solid #ccc; border-radius: 8px; cursor: crosshair; }
+    label { font-weight: bold; }
+    button { padding: 6px 18px; font-size: 1rem; border-radius: 5px; border: none; background: #1976d2; color: #fff; cursor: pointer; }
+    button:hover { background: #125ea7; }
+    select { font-size: 1rem; padding: 4px 8px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>K-Nearest Neighbor Demo</h1>
+    <div id="controls">
+      <div>
+        <label for="k-select">K:</label>
+        <select id="k-select">
+          <option value="3">3</option>
+          <option value="5">5</option>
+          <option value="7">7</option>
+        </select>
+      </div>
+      <button id="reset-btn">Reset</button>
+    </div>
+    <canvas id="canvas" width="600" height="400"></canvas>
+  </div>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const resetBtn = document.getElementById('reset-btn');
+    const kSelect = document.getElementById('k-select');
+    let K = parseInt(kSelect.value);
+
+    let points = [];
+    const POINT_RADIUS = 8;
+    const COLORS = { red: '#e53935', blue: '#1e88e5' };
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function randomPoints(color, count) {
+      const arr = [];
+      for (let i = 0; i < count; i++) {
+        arr.push({
+          x: randomInt(POINT_RADIUS, canvas.width - POINT_RADIUS),
+          y: randomInt(POINT_RADIUS, canvas.height - POINT_RADIUS),
+          color
+        });
+      }
+      return arr;
+    }
+
+    function resetPoints() {
+      const redCount = randomInt(5, 15);
+      const blueCount = randomInt(5, 15);
+      points = [
+        ...randomPoints('red', redCount),
+        ...randomPoints('blue', blueCount)
+      ];
+      draw();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const p of points) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, POINT_RADIUS, 0, 2 * Math.PI);
+        ctx.fillStyle = COLORS[p.color];
+        ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
+
+    function getMousePos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: Math.round((evt.clientX - rect.left) * (canvas.width / rect.width)),
+        y: Math.round((evt.clientY - rect.top) * (canvas.height / rect.height))
+      };
+    }
+
+    function distance(a, b) {
+      return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+    }
+
+    function knnClassify(x, y, k) {
+      const dists = points.map(p => ({ ...p, dist: distance({x, y}, p) }));
+      dists.sort((a, b) => a.dist - b.dist);
+      const neighbors = dists.slice(0, k);
+      const counts = { red: 0, blue: 0 };
+      for (const n of neighbors) counts[n.color]++;
+      return counts.red > counts.blue ? 'red' : 'blue';
+    }
+
+    canvas.addEventListener('click', evt => {
+      const { x, y } = getMousePos(evt);
+      // Don't allow placing on top of another point
+      if (points.some(p => distance(p, {x, y}) < POINT_RADIUS * 2)) return;
+      const color = knnClassify(x, y, K);
+      points.push({ x, y, color });
+      draw();
+    });
+
+    resetBtn.addEventListener('click', resetPoints);
+    kSelect.addEventListener('change', e => {
+      K = parseInt(e.target.value);
+    });
+
+    // Initial setup
+    resetPoints();
+  </script>
+</body>
+</html>
